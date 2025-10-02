@@ -111,7 +111,9 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
           </a>
         </div>
         <div className="mt-2 text-xs text-gray-600">
-          💡 Development tip: Add OPENROUTER_API_KEY to your .env.local file for automatic loading
+          💡 Development tip: Add NEXT_PUBLIC_OPENROUTER_API_KEY to your .env.local file for automatic loading
+          <br />
+          ⚠️ Never commit API keys to your repository!
         </div>
       </div>
 
