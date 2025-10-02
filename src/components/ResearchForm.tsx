@@ -27,13 +27,14 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
     }
   }, []);
 
-  // Pre-fill with the known development key for convenience
+  // Try to load API key from environment variable (server-side)
   useEffect(() => {
     if (!apiKey && typeof window !== 'undefined') {
-      const defaultKey = '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';
-      if (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app')) {
+      // In development, check if there's a default key available
+      // This should be set via environment variables for security
+      const defaultKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+      if (defaultKey && (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app'))) {
         setApiKey(defaultKey);
-        // Also save it to localStorage for persistence
         localStorage.setItem('openrouter_api_key', defaultKey);
       }
     }
