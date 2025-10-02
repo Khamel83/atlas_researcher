@@ -58,9 +58,19 @@ export default function Home() {
 
                 if (data.success) {
                   setResearchResult(data);
-                  // Redirect to the report page
-                  if (typeof window !== 'undefined') {
-                    window.location.href = data.reportUrl;
+                  // If report content is included, display it directly
+                  if (data.reportContent) {
+                    // Store in sessionStorage for the report viewer
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem(`report_${data.filename}`, data.reportContent);
+                      sessionStorage.setItem(`metadata_${data.filename}`, JSON.stringify(data.metadata));
+                      window.location.href = data.reportUrl;
+                    }
+                  } else {
+                    // Redirect to the report page
+                    if (typeof window !== 'undefined') {
+                      window.location.href = data.reportUrl;
+                    }
                   }
                   break;
                 }

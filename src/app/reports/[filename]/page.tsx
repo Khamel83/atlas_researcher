@@ -30,6 +30,21 @@ export default function ReportViewer() {
       setIsLoading(true);
       setError(null);
 
+      // First try to get from sessionStorage (for recent reports)
+      if (typeof window !== 'undefined') {
+        const sessionContent = sessionStorage.getItem(`report_${filename}`);
+        const sessionMetadata = sessionStorage.getItem(`metadata_${filename}`);
+
+        if (sessionContent) {
+          setReport({
+            content: sessionContent,
+            metadata: sessionMetadata ? JSON.parse(sessionMetadata) : null
+          });
+          return;
+        }
+      }
+
+      // Fallback to API
       const response = await fetch(`/api/reports/${filename}`);
       if (!response.ok) {
         if (response.status === 404) {

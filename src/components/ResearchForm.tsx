@@ -63,10 +63,10 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
           className="w-full h-32 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           disabled={disabled || isLoading}
           minLength={10}
-          maxLength={500}
+          maxLength={2000}
         />
         <div className="mt-2 text-sm text-gray-500">
-          {question.length}/500 characters (minimum 10)
+          {question.length}/2000 characters (minimum 10)
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { SearcherAgent } from '@/lib/agents/searcher';
 import { EvaluatorAgent } from '@/lib/agents/evaluator';
 import { SynthesizerAgent } from '@/lib/agents/synthesizer';
 import { ReportStorage } from '@/lib/storage';
+import { VercelReportStorage } from '@/lib/storage-vercel';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,28 +82,31 @@ export async function POST(request: NextRequest) {
 
           sendProgress('Finalizing report', 90);
 
-          // Save report
-          const { filename, metadata } = await ReportStorage.saveReport(
-            synthesisResult.fullReport,
-            question,
-            [synthesisResult.modelUsed]
-          );
+          // Generate report metadata
+          const filename = ReportStorage.generateFilename();
+          const metadata = {
+            filename,
+            timestamp: new Date().toISOString(),
+            query: question,
+            wordCount: synthesisResult.wordCount,
+            models_used: [synthesisResult.modelUsed],
+            sectionsGenerated: synthesisResult.sectionsGenerated,
+            keyFindings: synthesisResult.keyFindings,
+            citationsUsed: synthesisResult.citationsUsed
+          };
 
           const usage = usageTracker.getTotalUsage();
 
           sendProgress('Complete', 100, 'Research completed successfully');
 
-          // Send final result
+          // Send final result with report content included
           const finalData = JSON.stringify({
             success: true,
             reportUrl: ReportStorage.getReportUrl(filename),
             filename,
+            reportContent: synthesisResult.fullReport,
             metadata: {
               ...metadata,
-              wordCount: synthesisResult.wordCount,
-              sectionsGenerated: synthesisResult.sectionsGenerated,
-              keyFindings: synthesisResult.keyFindings,
-              citationsUsed: synthesisResult.citationsUsed,
               totalTokens: usage.totalTokens,
               modelsUsed: usage.modelsUsed,
               subtopicsInvestigated: planningResult.subtopics.length,
