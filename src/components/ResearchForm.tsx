@@ -17,12 +17,12 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
   const [question, setQuestion] = useState('');
   const [apiKey, setApiKey] = useState('');
 
-  // Load saved API key from localStorage on mount
+  // Load API key from various sources
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedKey = localStorage.getItem('openrouter_api_key');
-      if (savedKey) {
-        setApiKey(savedKey);
+      const storedKey = localStorage.getItem('openrouter_api_key');
+      if (storedKey) {
+        setApiKey(storedKey);
       }
     }
   }, []);
@@ -96,6 +96,9 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
           >
             Get your free OpenRouter API key →
           </a>
+        </div>
+        <div className="mt-2 text-xs text-gray-600">
+          💡 Development tip: Add OPENROUTER_API_KEY to your .env.local file for automatic loading
         </div>
       </div>
 

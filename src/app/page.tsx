@@ -172,6 +172,11 @@ export default function Home() {
               <div className="bg-gray-900 rounded-xl p-8 border border-gray-800">
                 <h3 className="text-xl font-semibold text-gray-100 mb-6">Start Your Research</h3>
                 <ResearchForm onSubmit={handleResearchStart} disabled={isResearching} />
+                <div className="mt-6 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-300">
+                    💡 <strong>Development Tip:</strong> Create a <code className="bg-gray-800 px-2 py-1 rounded text-xs">.env.local</code> file with your OpenRouter API key to skip entering it manually during development.
+                  </p>
+                </div>
               </div>
             )}
 
