@@ -1,15 +1,16 @@
 export const MODEL_STRATEGY = {
-  planning: 'mistralai/mistral-7b-instruct:free',
-  reasoning: 'deepseek/deepseek-r1:free',
-  summarization: 'mistralai/mistral-7b-instruct:free',
-  synthesis: 'meta-llama/llama-3-70b-instruct:free',
+  planning: 'deepseek/deepseek-chat-v3.1:free',
+  reasoning: 'deepseek/deepseek-chat-v3.1:free',
+  summarization: 'deepseek/deepseek-chat-v3.1:free',
+  synthesis: 'meta-llama/llama-4-maverick:free',
   fallback: 'openrouter/auto'
 } as const;
 
 export const FALLBACK_MODELS = [
-  'mistralai/mistral-7b-instruct:free',
-  'meta-llama/llama-3-8b-instruct:free',
-  'microsoft/phi-3-mini-128k-instruct:free',
+  'deepseek/deepseek-chat-v3.1:free',
+  'meta-llama/llama-4-maverick:free',
+  'meta-llama/llama-3-70b-instruct:free',
+  'deepseek/deepseek-r1:free',
   'openrouter/auto'
 ];
 
