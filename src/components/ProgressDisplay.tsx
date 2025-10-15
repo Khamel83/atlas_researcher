@@ -51,78 +51,86 @@ export function ProgressDisplay({ isActive, researchData, onComplete, onError, o
           signal: AbortSignal.timeout(600000), // 10 minute timeout
         });
 
-        const data = await response.json();
-
-        // Check if a resumable session is available
-        if (data.resumeAvailable) {
-          onResumeAvailable?.({
-            sessionId: data.sessionId,
-            existingProgress: data.existingProgress,
-            existingPhase: data.existingPhase
-          });
-          setIsComplete(true);
-          return;
-        }
-
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to start research');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to start research');
         }
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
+        // Check if this is a streaming response (content-type is text/event-stream)
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('text/event-stream')) {
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
 
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6));
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const jsonData = line.slice(6).trim();
+                    if (!jsonData) continue;
 
-                  // Store session ID if provided
-                  if (data.sessionId && !sessionId) {
-                    setSessionId(data.sessionId);
-                  }
+                    const data = JSON.parse(jsonData);
 
-                  if ('phase' in data && 'progress' in data) {
-                    // Progress update
-                    setCurrentPhase(data.phase);
-                    setProgress(data.progress);
-                    setDetails(data.details || '');
-
-                    if (data.progress === 100) {
-                      setIsComplete(true);
+                    // Store session ID if provided
+                    if (data.sessionId && !sessionId) {
+                      setSessionId(data.sessionId);
                     }
-                  } else if (data.success && typeof data === 'object' && 'reportUrl' in data) {
-                    // Research completed
-                    onComplete?.(data as {
-                      reportUrl: string;
-                      metadata?: {
-                        wordCount?: number;
-                        modelsUsed?: string[];
-                        totalTokens?: number;
-                        subtopicsInvestigated?: number;
-                      };
-                      sessionId?: string;
-                    });
-                    setIsComplete(true);
-                    return;
-                  } else if (data.error) {
-                    // Research failed
-                    onError?.(data.error);
-                    setIsComplete(true);
-                    return;
+
+                    if ('phase' in data && 'progress' in data) {
+                      // Progress update
+                      setCurrentPhase(data.phase);
+                      setProgress(data.progress);
+                      setDetails(data.details || '');
+
+                      if (data.progress === 100) {
+                        setIsComplete(true);
+                      }
+                    } else if (data.success && typeof data === 'object' && 'reportUrl' in data) {
+                      // Research completed
+                      onComplete?.(data as {
+                        reportUrl: string;
+                        metadata?: {
+                          wordCount?: number;
+                          modelsUsed?: string[];
+                          totalTokens?: number;
+                          subtopicsInvestigated?: number;
+                        };
+                        sessionId?: string;
+                      });
+                      setIsComplete(true);
+                      return;
+                    } else if (data.error) {
+                      // Research failed
+                      onError?.(data.error);
+                      setIsComplete(true);
+                      return;
+                    }
+                  } catch (error) {
+                    console.error('Failed to parse SSE message:', error, 'Line:', line);
                   }
-                } catch (error) {
-                  console.error('Failed to parse message:', error);
                 }
               }
             }
+          }
+        } else {
+          // Handle JSON response (for resume availability check)
+          const data = await response.json();
+
+          if (data.resumeAvailable) {
+            onResumeAvailable?.({
+              sessionId: data.sessionId,
+              existingProgress: data.existingProgress,
+              existingPhase: data.existingPhase
+            });
+            setIsComplete(true);
+            return;
           }
         }
       } catch (error) {
@@ -134,6 +142,8 @@ export function ProgressDisplay({ isActive, researchData, onComplete, onError, o
             errorMessage = 'Research request timed out. Please try again.';
           } else if (error.message.includes('Failed to fetch')) {
             errorMessage = 'Connection error during research. Please check your internet connection and try again.';
+          } else if (error.message.includes('JSON')) {
+            errorMessage = 'Server response format error. Please try again.';
           } else {
             errorMessage = error.message;
           }

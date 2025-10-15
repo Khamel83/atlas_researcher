@@ -221,22 +221,27 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           const sendProgress = (phase: string, progress: number, details?: string) => {
-            const data = JSON.stringify({
-              phase,
-              progress,
-              details,
-              sessionId: session.id,
-              timestamp: new Date().toISOString()
-            });
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            try {
+              const data = JSON.stringify({
+                phase,
+                progress,
+                details,
+                sessionId: session.id,
+                timestamp: new Date().toISOString()
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
 
-            // Update session progress
-            researchSessionStorage.updateSession(session.id, {
-              status: session.status,
-              progress,
-              currentPhase: phase,
-              details
-            });
+              // Update session progress
+              researchSessionStorage.updateSession(session.id, {
+                status: session.status,
+                progress,
+                currentPhase: phase,
+                details
+              });
+            } catch (error) {
+              console.warn('Failed to send progress update:', error);
+              // Don't throw - just continue without sending this update
+            }
           };
 
           const client = createOpenRouterClient(apiKey);
@@ -264,6 +269,19 @@ export async function POST(request: NextRequest) {
           // Generate report metadata
           const filename = ReportStorage.generateFilename();
           const totalSources = researchData.searchResults.reduce((sum, result) => sum + result.results.length, 0);
+
+          // Save the report to storage
+          try {
+            await ReportStorage.saveReport(
+              researchData.synthesisResult.fullReport,
+              question,
+              [researchData.synthesisResult.modelUsed]
+            );
+          } catch (saveError) {
+            console.warn('Failed to save report to filesystem:', saveError);
+            // Continue even if saving fails - the content is still returned in the response
+          }
+
           const metadata = {
             filename,
             timestamp: new Date().toISOString(),
@@ -307,7 +325,12 @@ export async function POST(request: NextRequest) {
               sourcesEvaluated: totalSources
             }
           });
-          controller.enqueue(encoder.encode(`data: ${finalData}\n\n`));
+
+          try {
+            controller.enqueue(encoder.encode(`data: ${finalData}\n\n`));
+          } catch (error) {
+            console.warn('Failed to send final result:', error);
+          }
 
         } catch (error) {
           console.error('Research pipeline error:', error);
@@ -337,9 +360,18 @@ export async function POST(request: NextRequest) {
             sessionId: session.id,
             timestamp: new Date().toISOString()
           });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+
+          try {
+            controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+          } catch (writeError) {
+            console.warn('Failed to send error message:', writeError);
+          }
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch (closeError) {
+            console.warn('Controller already closed:', closeError);
+          }
         }
       }
     });
