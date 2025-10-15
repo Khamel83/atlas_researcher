@@ -234,29 +234,48 @@ export default function ReportViewer() {
           </h1>
 
           {report.metadata && (
-            <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-                <span>{formatDate(report.metadata.timestamp)}</span>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                </svg>
-                <span>{report.metadata.wordCount?.toLocaleString() || 0} words</span>
-              </div>
-
-              {report.metadata.models_used && report.metadata.models_used.length > 0 && (
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                  </svg>
-                  <span>{report.metadata.models_used.join(', ')}</span>
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4 border border-gray-700">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-100" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs uppercase tracking-wide">Generated</div>
+                    <div className="text-gray-200 font-medium">{formatDate(report.metadata.timestamp)}</div>
+                  </div>
                 </div>
-              )}
+
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-100" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs uppercase tracking-wide">Word Count</div>
+                    <div className="text-gray-200 font-medium">{report.metadata.wordCount?.toLocaleString() || 0} words</div>
+                  </div>
+                </div>
+
+                {report.metadata.models_used && report.metadata.models_used.length > 0 && (
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-purple-100" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-gray-400 text-xs uppercase tracking-wide">AI Model</div>
+                      <div className="text-gray-200 font-medium truncate max-w-[200px]" title={report.metadata.models_used.join(', ')}>
+                        {report.metadata.models_used[0]}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -288,102 +307,273 @@ export default function ReportViewer() {
         </div>
       </main>
 
-      <style jsx>{`
+      <style jsx global>{`
         .markdown-content {
-          color: inherit;
+          color: #e5e7eb;
+          line-height: 1.7;
+          font-size: 16px;
         }
 
         .markdown-content h1 {
-          color: #f3f4f6;
-          font-size: 2rem;
-          font-weight: bold;
-          margin-top: 2rem;
-          margin-bottom: 1rem;
+          color: #ffffff;
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-top: 3rem;
+          margin-bottom: 1.5rem;
+          line-height: 1.2;
+          border-bottom: 2px solid #374151;
+          padding-bottom: 0.75rem;
         }
 
         .markdown-content h2 {
-          color: #f3f4f6;
-          font-size: 1.5rem;
-          font-weight: bold;
-          margin-top: 2rem;
-          margin-bottom: 1rem;
+          color: #ffffff;
+          font-size: 2rem;
+          font-weight: 600;
+          margin-top: 2.5rem;
+          margin-bottom: 1.25rem;
+          line-height: 1.3;
+          border-bottom: 1px solid #4b5563;
+          padding-bottom: 0.5rem;
         }
 
         .markdown-content h3 {
-          color: #e5e7eb;
+          color: #f3f4f6;
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          line-height: 1.4;
+        }
+
+        .markdown-content h4 {
+          color: #f3f4f6;
           font-size: 1.25rem;
-          font-weight: bold;
+          font-weight: 600;
           margin-top: 1.5rem;
           margin-bottom: 0.75rem;
+          line-height: 1.4;
+        }
+
+        .markdown-content h5,
+        .markdown-content h6 {
+          color: #d1d5db;
+          font-size: 1.125rem;
+          font-weight: 600;
+          margin-top: 1.25rem;
+          margin-bottom: 0.5rem;
+          line-height: 1.4;
         }
 
         .markdown-content p {
-          margin-bottom: 1rem;
+          margin-bottom: 1.25rem;
           line-height: 1.7;
+          color: #d1d5db;
         }
 
         .markdown-content ul,
         .markdown-content ol {
-          margin-bottom: 1rem;
-          padding-left: 1.5rem;
+          margin-bottom: 1.25rem;
+          padding-left: 2rem;
         }
 
         .markdown-content li {
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
+          line-height: 1.7;
+          color: #d1d5db;
+        }
+
+        .markdown-content ul li {
+          list-style-type: none;
+          position: relative;
+        }
+
+        .markdown-content ul li::before {
+          content: "•";
+          color: #60a5fa;
+          font-weight: bold;
+          position: absolute;
+          left: -1.25rem;
+        }
+
+        .markdown-content ol li {
+          color: #60a5fa;
+          font-weight: 600;
+          margin-right: 0.5rem;
+        }
+
+        .markdown-content ol li span {
+          color: #d1d5db;
+          font-weight: normal;
         }
 
         .markdown-content blockquote {
-          border-left: 4px solid #3b82f6;
-          padding-left: 1rem;
-          margin: 1rem 0;
+          border-left: 4px solid #60a5fa;
+          background: linear-gradient(to right, rgba(96, 165, 250, 0.1), transparent);
+          padding: 1rem 1.5rem;
+          margin: 1.5rem 0;
           color: #9ca3af;
           font-style: italic;
+          border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        .markdown-content blockquote p {
+          margin-bottom: 0;
         }
 
         .markdown-content code {
           background-color: #374151;
-          padding: 0.125rem 0.25rem;
-          border-radius: 0.25rem;
+          color: #fbbf24;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.375rem;
           font-size: 0.875rem;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          border: 1px solid #4b5563;
         }
 
         .markdown-content pre {
           background-color: #1f2937;
-          padding: 1rem;
-          border-radius: 0.5rem;
+          padding: 1.5rem;
+          border-radius: 0.75rem;
           overflow-x: auto;
-          margin: 1rem 0;
+          margin: 1.5rem 0;
+          border: 1px solid #374151;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
 
         .markdown-content pre code {
           background-color: transparent;
           padding: 0;
+          color: #e5e7eb;
+          border: none;
+          font-size: 0.875rem;
+          line-height: 1.5;
         }
 
         .markdown-content a {
           color: #60a5fa;
-          text-decoration: underline;
+          text-decoration: none;
+          border-bottom: 1px solid transparent;
+          transition: all 0.2s ease;
         }
 
         .markdown-content a:hover {
           color: #3b82f6;
+          border-bottom-color: #3b82f6;
+        }
+
+        .markdown-content strong,
+        .markdown-content b {
+          color: #ffffff;
+          font-weight: 600;
+        }
+
+        .markdown-content em,
+        .markdown-content i {
+          color: #f3f4f6;
+          font-style: italic;
         }
 
         .markdown-content table {
           width: 100%;
           border-collapse: collapse;
-          margin: 1rem 0;
+          margin: 1.5rem 0;
+          background-color: #1f2937;
+          border-radius: 0.75rem;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
         }
 
         .markdown-content th,
         .markdown-content td {
-          border: 1px solid #374151;
-          padding: 0.5rem;
+          padding: 1rem;
           text-align: left;
+          border-bottom: 1px solid #374151;
         }
 
         .markdown-content th {
-          background-color: #1f2937;
+          background-color: #374151;
+          color: #ffffff;
+          font-weight: 600;
+          font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .markdown-content tr:last-child td {
+          border-bottom: none;
+        }
+
+        .markdown-content tr:hover {
+          background-color: rgba(55, 65, 81, 0.5);
+        }
+
+        .markdown-content hr {
+          border: none;
+          height: 2px;
+          background: linear-gradient(to right, transparent, #4b5563, transparent);
+          margin: 3rem 0;
+        }
+
+        .markdown-content .sources {
+          margin-top: 3rem;
+          padding-top: 2rem;
+          border-top: 2px solid #374151;
+        }
+
+        .markdown-content .sources h2 {
+          color: #60a5fa;
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+
+        .markdown-content .sources ol {
+          padding-left: 1.5rem;
+        }
+
+        .markdown-content .sources li {
+          font-size: 0.875rem;
+          color: #9ca3af;
+          margin-bottom: 0.5rem;
+        }
+
+        /* Executive Summary styling */
+        .markdown-content h1 + p em {
+          display: block;
+          background: linear-gradient(135deg, #1e40af, #3730a3);
+          color: #e0e7ff;
+          padding: 1.5rem;
+          border-radius: 0.75rem;
+          margin: 1.5rem 0;
+          font-style: normal;
+          border-left: 4px solid #60a5fa;
+        }
+
+        /* Better section spacing */
+        .markdown-content h2 + ul,
+        .markdown-content h2 + ol,
+        .markdown-content h2 + p {
+          margin-top: 1rem;
+        }
+
+        /* Code blocks with syntax highlighting appearance */
+        .markdown-content pre::-webkit-scrollbar {
+          height: 8px;
+        }
+
+        .markdown-content pre::-webkit-scrollbar-track {
+          background: #374151;
+          border-radius: 4px;
+        }
+
+        .markdown-content pre::-webkit-scrollbar-thumb {
+          background: #6b7280;
+          border-radius: 4px;
+        }
+
+        .markdown-content pre::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
         }
       `}</style>
     </div>
