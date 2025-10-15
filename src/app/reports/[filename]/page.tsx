@@ -21,10 +21,6 @@ export default function ReportViewer() {
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  useEffect(() => {
-    fetchReport();
-  }, [filename, fetchReport]);
-
   const fetchReport = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -62,6 +58,10 @@ export default function ReportViewer() {
       setIsLoading(false);
     }
   }, [filename]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [filename, fetchReport]);
 
   const downloadReport = async () => {
     if (!report) return;
