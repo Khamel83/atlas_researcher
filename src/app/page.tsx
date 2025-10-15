@@ -7,6 +7,7 @@ import { ReportsList } from '@/components/ReportsList';
 
 export default function Home() {
   const [isResearching, setIsResearching] = useState(false);
+  const [researchData, setResearchData] = useState<ResearchFormData | null>(null);
   const [researchResult, setResearchResult] = useState<{
     reportUrl: string;
     metadata?: {
@@ -17,76 +18,19 @@ export default function Home() {
     };
   } | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
+  const [resumeData, setResumeData] = useState<{
+    sessionId: string;
+    existingProgress: number;
+    existingPhase: string;
+  } | null>(null);
+  const [currentResearchMode, setCurrentResearchMode] = useState<'normal' | 'max'>('normal');
 
-  const handleResearchStart = async (data: ResearchFormData) => {
+  const handleResearchStart = (data: ResearchFormData) => {
     setIsResearching(true);
+    setResearchData(data);
+    setCurrentResearchMode(data.researchMode || 'normal');
     setResearchResult(null);
     setResearchError(null);
-
-    try {
-      const response = await fetch('/api/research', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start research');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-
-                if (data.success === false) {
-                  throw new Error(data.error);
-                }
-
-                if (data.success) {
-                  setResearchResult(data);
-                  // If report content is included, display it directly
-                  if (data.reportContent) {
-                    // Store in sessionStorage for the report viewer
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.setItem(`report_${data.filename}`, data.reportContent);
-                      sessionStorage.setItem(`metadata_${data.filename}`, JSON.stringify(data.metadata));
-                      window.location.href = data.reportUrl;
-                    }
-                  } else {
-                    // Redirect to the report page
-                    if (typeof window !== 'undefined') {
-                      window.location.href = data.reportUrl;
-                    }
-                  }
-                  break;
-                }
-              } catch {
-                // Ignore parsing errors for progress updates
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Research error:', error);
-      setResearchError(error instanceof Error ? error.message : 'An unexpected error occurred');
-    } finally {
-      setIsResearching(false);
-    }
   };
 
   const handleProgressComplete = (result: {
@@ -97,13 +41,25 @@ export default function Home() {
       totalTokens?: number;
       subtopicsInvestigated?: number;
     };
+    reportContent?: string;
+    filename?: string;
   }) => {
     setResearchResult(result);
     setIsResearching(false);
 
-    // Redirect to the report page
-    if (typeof window !== 'undefined' && result.reportUrl) {
-      window.location.href = result.reportUrl;
+    // If report content is included, display it directly
+    if (result.reportContent && result.filename) {
+      // Store in sessionStorage for the report viewer
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`report_${result.filename}`, result.reportContent);
+        sessionStorage.setItem(`metadata_${result.filename}`, JSON.stringify(result.metadata));
+        window.location.href = result.reportUrl;
+      }
+    } else {
+      // Redirect to the report page
+      if (typeof window !== 'undefined' && result.reportUrl) {
+        window.location.href = result.reportUrl;
+      }
     }
   };
 
@@ -112,9 +68,43 @@ export default function Home() {
     setIsResearching(false);
   };
 
+  const handleResumeAvailable = (data: {
+    sessionId: string;
+    existingProgress: number;
+    existingPhase: string;
+  }) => {
+    setResumeData(data);
+    setIsResearching(false);
+  };
+
+  const handleResumeResearch = () => {
+    if (!resumeData || !researchData) return;
+
+    setIsResearching(true);
+    setResumeData(null);
+    setResearchData({
+      ...researchData,
+      sessionId: resumeData.sessionId,
+      resume: true,
+      researchMode: currentResearchMode
+    });
+  };
+
+  const handleStartNewResearch = () => {
+    if (!researchData) return;
+
+    setIsResearching(true);
+    setResumeData(null);
+    setResearchData({
+      question: researchData.question,
+      researchMode: currentResearchMode
+    });
+  };
+
   const handleNewResearch = () => {
     setResearchResult(null);
     setResearchError(null);
+    setResumeData(null);
     setIsResearching(false);
   };
 
@@ -181,11 +171,46 @@ export default function Home() {
             {!isResearching && !researchResult && (
               <div className="bg-gray-900 rounded-xl p-8 border border-gray-800">
                 <h3 className="text-xl font-semibold text-gray-100 mb-6">Start Your Research</h3>
-                <ResearchForm onSubmit={handleResearchStart} disabled={isResearching} />
-                <div className="mt-6 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-300">
-                    💡 <strong>Development Tip:</strong> Create a <code className="bg-gray-800 px-2 py-1 rounded text-xs">.env.local</code> file with your OpenRouter API key to skip entering it manually during development.
+                <ResearchForm
+                  onSubmit={handleResearchStart}
+                  disabled={isResearching}
+                  initialMode={currentResearchMode}
+                />
+                <div className="mt-6 p-4 bg-green-900/20 border border-green-800 rounded-lg">
+                  <p className="text-sm text-green-300">
+                    ✅ <strong>API Configured:</strong> OpenRouter API key is pre-configured on the server. Just enter your research question and start!
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Resume Available Display */}
+            {resumeData && (
+              <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-yellow-400 font-medium">Resume Previous Research?</h3>
+                </div>
+                <div className="space-y-2 text-sm text-gray-300 mb-4">
+                  <p>Found a previous research session for this question:</p>
+                  <p>📊 Progress: {resumeData.existingProgress}%</p>
+                  <p>🔄 Last phase: {resumeData.existingPhase}</p>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleResumeResearch}
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm transition-colors"
+                  >
+                    Resume Research
+                  </button>
+                  <button
+                    onClick={handleStartNewResearch}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                  >
+                    Start New Research
+                  </button>
                 </div>
               </div>
             )}
@@ -194,8 +219,10 @@ export default function Home() {
             {isResearching && (
               <ProgressDisplay
                 isActive={isResearching}
+                researchData={researchData}
                 onComplete={handleProgressComplete}
                 onError={handleProgressError}
+                onResumeAvailable={handleResumeAvailable}
               />
             )}
 

@@ -11,6 +11,7 @@ export interface ProgressData {
 
 export interface ProgressDisplayProps {
   isActive: boolean;
+  researchData?: { question: string };
   onComplete?: (result: {
     reportUrl: string;
     metadata?: {
@@ -19,79 +20,132 @@ export interface ProgressDisplayProps {
       totalTokens?: number;
       subtopicsInvestigated?: number;
     };
+    sessionId?: string;
   }) => void;
   onError?: (error: string) => void;
+  onResumeAvailable?: (resumeData: {
+    sessionId: string;
+    existingProgress: number;
+    existingPhase: string;
+  }) => void;
 }
 
-export function ProgressDisplay({ isActive, onComplete, onError }: ProgressDisplayProps) {
+export function ProgressDisplay({ isActive, researchData, onComplete, onError, onResumeAvailable }: ProgressDisplayProps) {
   const [currentPhase, setCurrentPhase] = useState('');
   const [progress, setProgress] = useState(0);
   const [details, setDetails] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || !researchData) return;
 
-    const eventSource = new EventSource('/api/research', {
-      method: 'POST',
-      body: JSON.stringify({ question: '', apiKey: '' }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    } as any);
-
-    eventSource.onmessage = (event) => {
+    const startResearch = async () => {
       try {
-        const data: ProgressData | {
-          success: boolean;
-          error?: string;
-          [key: string]: unknown;
-        } = JSON.parse(event.data);
+        const response = await fetch('/api/research', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(researchData),
+          signal: AbortSignal.timeout(600000), // 10 minute timeout
+        });
 
-        if ('phase' in data && 'progress' in data) {
-          // Progress update
-          setCurrentPhase(data.phase);
-          setProgress(data.progress);
-          setDetails(data.details || '');
+        const data = await response.json();
 
-          if (data.progress === 100) {
-            setIsComplete(true);
-            eventSource.close();
-          }
-        } else if (data.success && typeof data === 'object' && 'reportUrl' in data) {
-          // Research completed
-          onComplete?.(data as {
-            reportUrl: string;
-            metadata?: {
-              wordCount?: number;
-              modelsUsed?: string[];
-              totalTokens?: number;
-              subtopicsInvestigated?: number;
-            };
+        // Check if a resumable session is available
+        if (data.resumeAvailable) {
+          onResumeAvailable?.({
+            sessionId: data.sessionId,
+            existingProgress: data.existingProgress,
+            existingPhase: data.existingPhase
           });
           setIsComplete(true);
-          eventSource.close();
-        } else if (data.error) {
-          // Research failed
-          onError?.(data.error);
-          setIsComplete(true);
-          eventSource.close();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to start research');
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  // Store session ID if provided
+                  if (data.sessionId && !sessionId) {
+                    setSessionId(data.sessionId);
+                  }
+
+                  if ('phase' in data && 'progress' in data) {
+                    // Progress update
+                    setCurrentPhase(data.phase);
+                    setProgress(data.progress);
+                    setDetails(data.details || '');
+
+                    if (data.progress === 100) {
+                      setIsComplete(true);
+                    }
+                  } else if (data.success && typeof data === 'object' && 'reportUrl' in data) {
+                    // Research completed
+                    onComplete?.(data as {
+                      reportUrl: string;
+                      metadata?: {
+                        wordCount?: number;
+                        modelsUsed?: string[];
+                        totalTokens?: number;
+                        subtopicsInvestigated?: number;
+                      };
+                      sessionId?: string;
+                    });
+                    setIsComplete(true);
+                    return;
+                  } else if (data.error) {
+                    // Research failed
+                    onError?.(data.error);
+                    setIsComplete(true);
+                    return;
+                  }
+                } catch (error) {
+                  console.error('Failed to parse message:', error);
+                }
+              }
+            }
+          }
         }
       } catch (error) {
-        console.error('Failed to parse SSE message:', error);
+        console.error('Research error:', error);
+        let errorMessage = 'An unexpected error occurred';
+
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            errorMessage = 'Research request timed out. Please try again.';
+          } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Connection error during research. Please check your internet connection and try again.';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
+        onError?.(errorMessage);
+        setIsComplete(true);
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
-      onError?.('Connection error during research');
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [isActive, onComplete, onError]);
+    startResearch();
+  }, [isActive, researchData, onComplete, onError]);
 
   useEffect(() => {
     if (!isActive) {
@@ -99,6 +153,7 @@ export function ProgressDisplay({ isActive, onComplete, onError }: ProgressDispl
       setProgress(0);
       setDetails('');
       setIsComplete(false);
+      setSessionId(null);
     }
   }, [isActive]);
 

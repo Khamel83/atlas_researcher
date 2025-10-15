@@ -4,41 +4,19 @@ import { useState, useEffect } from 'react';
 
 export interface ResearchFormData {
   question: string;
-  apiKey: string;
+  researchMode?: 'normal' | 'max';
 }
 
 export interface ResearchFormProps {
   onSubmit: (data: ResearchFormData) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  initialMode?: 'normal' | 'max';
 }
 
-export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: ResearchFormProps) {
+export function ResearchForm({ onSubmit, isLoading = false, disabled = false, initialMode = 'normal' }: ResearchFormProps) {
   const [question, setQuestion] = useState('');
-  const [apiKey, setApiKey] = useState('');
-
-  // Load API key from various sources
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedKey = localStorage.getItem('openrouter_api_key');
-      if (storedKey) {
-        setApiKey(storedKey);
-      }
-    }
-  }, []);
-
-  // Try to load API key from environment variable (server-side)
-  useEffect(() => {
-    if (!apiKey && typeof window !== 'undefined') {
-      // In development, check if there's a default key available
-      // This should be set via environment variables for security
-      const defaultKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-      if (defaultKey && (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app'))) {
-        setApiKey(defaultKey);
-        localStorage.setItem('openrouter_api_key', defaultKey);
-      }
-    }
-  }, [apiKey]);
+  const [researchMode, setResearchMode] = useState<'normal' | 'max'>(initialMode);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,17 +26,9 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
       return;
     }
 
-    if (apiKey.trim().length < 20) {
-      alert('Please enter a valid OpenRouter API key');
-      return;
-    }
-
-    // Save API key to localStorage
-    localStorage.setItem('openrouter_api_key', apiKey.trim());
-
     onSubmit({
       question: question.trim(),
-      apiKey: apiKey.trim()
+      researchMode
     });
   };
 
@@ -76,44 +46,68 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
           className="w-full h-32 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           disabled={disabled || isLoading}
           minLength={10}
-          maxLength={2000}
+          maxLength={10000}
         />
         <div className="mt-2 text-sm text-gray-500">
-          {question.length}/2000 characters (minimum 10)
+          {question.length}/10000 characters (minimum 10)
         </div>
       </div>
 
+      {/* Research Mode Selector */}
       <div>
-        <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-2">
-          OpenRouter API Key
+        <label className="block text-sm font-medium text-gray-300 mb-3">
+          Research Depth
         </label>
-        <input
-          id="apiKey"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-or-v1-..."
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          disabled={disabled || isLoading}
-          required
-        />
-        <div className="mt-2 text-sm text-gray-500">
-          Your API key will be saved locally and never shared
-        </div>
-        <div className="mt-2">
-          <a
-            href="https://openrouter.ai/keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 text-sm underline"
+        <div className="grid grid-cols-2 gap-4">
+          <div
+            className={`relative p-4 border rounded-lg cursor-pointer transition-all ${
+              researchMode === 'normal'
+                ? 'border-blue-500 bg-blue-500/10'
+                : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+            }`}
+            onClick={() => setResearchMode('normal')}
           >
-            Get your free OpenRouter API key →
-          </a>
-        </div>
-        <div className="mt-2 text-xs text-gray-600">
-          💡 Development tip: Add NEXT_PUBLIC_OPENROUTER_API_KEY to your .env.local file for automatic loading
-          <br />
-          ⚠️ Never commit API keys to your repository!
+            <div className="flex items-center space-x-3">
+              <div className={`w-4 h-4 rounded-full border-2 ${
+                researchMode === 'normal'
+                  ? 'border-blue-500 bg-blue-500'
+                  : 'border-gray-600'
+              }`}>
+                {researchMode === 'normal' && (
+                  <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                )}
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-100">Normal</h4>
+                <p className="text-sm text-gray-400">10 sources per subtopic</p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`relative p-4 border rounded-lg cursor-pointer transition-all ${
+              researchMode === 'max'
+                ? 'border-purple-500 bg-purple-500/10'
+                : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+            }`}
+            onClick={() => setResearchMode('max')}
+          >
+            <div className="flex items-center space-x-3">
+              <div className={`w-4 h-4 rounded-full border-2 ${
+                researchMode === 'max'
+                  ? 'border-purple-500 bg-purple-500'
+                  : 'border-gray-600'
+              }`}>
+                {researchMode === 'max' && (
+                  <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                )}
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-100">Max</h4>
+                <p className="text-sm text-gray-400">30+ sources per subtopic</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -123,7 +117,7 @@ export function ResearchForm({ onSubmit, isLoading = false, disabled = false }: 
         </div>
         <button
           type="submit"
-          disabled={disabled || isLoading || question.trim().length < 10 || !apiKey.trim()}
+          disabled={disabled || isLoading || question.trim().length < 10}
           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
         >
           {isLoading ? 'Starting Research...' : 'Start Research'}

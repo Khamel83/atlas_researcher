@@ -24,9 +24,11 @@ export interface EvaluationResult {
 
 export class EvaluatorAgent {
   private client: OpenRouterClient;
+  private researchMode?: 'normal' | 'max';
 
-  constructor(client: OpenRouterClient) {
+  constructor(client: OpenRouterClient, researchMode?: 'normal' | 'max') {
     this.client = client;
+    this.researchMode = researchMode;
   }
 
   async evaluateSearchResults(searchResults: SearchResults[]): Promise<EvaluationResult[]> {
@@ -53,19 +55,31 @@ export class EvaluatorAgent {
   }
 
   private async evaluateSubtopic(searchResult: SearchResults): Promise<EvaluationResult> {
+    // Apply source limits based on research mode
+    const maxSources = this.researchMode === 'max' ? 999 : 10; // 999 means use all available sources
+    const limitedResults = maxSources === 999 ? searchResult.results : searchResult.results.slice(0, maxSources);
     const evaluatedContent: EvaluatedContent[] = [];
 
-    for (const result of searchResult.results) {
-      try {
-        const content = await this.fetchAndEvaluateContent(result, searchResult.subtopic);
-        evaluatedContent.push(content);
+    // Process sources in batches of 4 for efficiency
+    const batchSize = 4;
+    for (let i = 0; i < limitedResults.length; i += batchSize) {
+      const batch = limitedResults.slice(i, i + batchSize);
 
-        // Small delay to avoid overwhelming services
-        await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        const batchResults = await this.evaluateBatch(batch, searchResult.subtopic);
+        evaluatedContent.push(...batchResults);
       } catch (error) {
-        console.error(`Failed to evaluate content from ${result.url}:`, error);
-        // Add a fallback evaluation based just on the snippet
-        evaluatedContent.push(await this.createFallbackEvaluation(result, searchResult.subtopic));
+        console.error(`Failed to evaluate batch ${i + 1}-${Math.min(i + batchSize, allResults.length)}:`, error);
+        // Fallback: evaluate individually for this batch
+        for (const result of batch) {
+          try {
+            const content = await this.fetchAndEvaluateContent(result, searchResult.subtopic);
+            evaluatedContent.push(content);
+          } catch (individualError) {
+            console.error(`Failed to evaluate content from ${result.url}:`, individualError);
+            evaluatedContent.push(await this.createFallbackEvaluation(result, searchResult.subtopic));
+          }
+        }
       }
     }
 
@@ -84,6 +98,118 @@ export class EvaluatorAgent {
       averageRelevance,
       averageCredibility
     };
+  }
+
+  private async evaluateBatch(
+    searchResults: SearchResult[],
+    subtopic: string
+  ): Promise<EvaluatedContent[]> {
+    const model = modelRouter.getModelForTask('reasoning');
+    const fallbackModels = modelRouter.getFallbackModels(model);
+
+    // Prepare batch evaluation data
+    const sourcesData = await Promise.all(
+      searchResults.map(async (result) => {
+        let contentText = '';
+        try {
+          const response = await axios.get(result.url, {
+            timeout: 5000, // Reduced timeout for batch processing
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; AtlasResearcher/1.0)'
+            }
+          });
+          contentText = response.data
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 1000); // Shorter content for batch
+        } catch (error) {
+          console.warn(`Failed to fetch content from ${result.url}, using snippet only`);
+          contentText = result.snippet;
+        }
+
+        return {
+          url: result.url,
+          title: result.title,
+          content: contentText
+        };
+      })
+    );
+
+    const prompt = `Evaluate these sources for research on: "${subtopic}"
+
+${sourcesData.map((source, index) =>
+`Source ${index + 1}:
+URL: ${source.url}
+Title: ${source.title}
+Content: ${source.content.substring(0, 800)}
+`
+).join('\n\n')}
+
+Return a JSON array with evaluations for each source:
+[
+  {
+    "summary": "2-3 sentence summary",
+    "keyPoints": ["point 1", "point 2"],
+    "citations": ["fact or quote"],
+    "relevanceScore": 8,
+    "credibilityScore": 7,
+    "url": "original_url"
+  }
+]
+
+Be concise but thorough.`;
+
+    const response = await this.client.chatWithFallback(
+      {
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a research analyst. Evaluate multiple sources efficiently and return valid JSON arrays.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1500,
+        temperature: 0.3
+      },
+      fallbackModels
+    );
+
+    return this.parseBatchResponse(response.choices[0].message.content, searchResults);
+  }
+
+  private parseBatchResponse(content: string, originalResults: SearchResult[]): EvaluatedContent[] {
+    try {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        throw new Error('No JSON array found in response');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed)) {
+        throw new Error('Response is not an array');
+      }
+
+      return parsed.map((item, index) => ({
+        url: item.url || originalResults[index].url,
+        title: originalResults[index].title,
+        summary: item.summary || 'No summary available',
+        keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints : [],
+        citations: Array.isArray(item.citations) ? item.citations : [],
+        relevanceScore: this.validateScore(item.relevanceScore),
+        credibilityScore: this.validateScore(item.credibilityScore),
+        contentText: originalResults[index].snippet
+      }));
+    } catch (error) {
+      console.error('Failed to parse batch evaluation response:', error);
+      throw error;
+    }
   }
 
   private async fetchAndEvaluateContent(

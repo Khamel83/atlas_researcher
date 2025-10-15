@@ -1,17 +1,16 @@
 export const MODEL_STRATEGY = {
-  planning: 'deepseek/deepseek-chat-v3.1:free',
-  reasoning: 'deepseek/deepseek-chat-v3.1:free',
-  summarization: 'deepseek/deepseek-chat-v3.1:free',
-  synthesis: 'meta-llama/llama-4-maverick:free',
-  fallback: 'openrouter/auto'
+  planning: 'google/gemini-2.5-flash-preview-09-2025',
+  reasoning: 'google/gemini-2.5-flash-preview-09-2025',
+  summarization: 'google/gemini-2.5-flash-preview-09-2025',
+  synthesis: 'google/gemini-2.5-flash-preview-09-2025',
+  fallback: 'google/gemini-2.5-flash-lite-preview-09-2025'
 } as const;
 
 export const FALLBACK_MODELS = [
-  'deepseek/deepseek-chat-v3.1:free',
-  'meta-llama/llama-4-maverick:free',
-  'meta-llama/llama-3-70b-instruct:free',
-  'deepseek/deepseek-r1:free',
-  'openrouter/auto'
+  'google/gemini-2.5-flash-lite-preview-09-2025',
+  'meta-llama/llama-3.1-70b-instruct:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'google/gemini-2.0-flash-001'
 ];
 
 export type ModelTask = keyof typeof MODEL_STRATEGY;

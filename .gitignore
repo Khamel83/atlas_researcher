@@ -40,3 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# OOS (Open Operating System) - copied from OOS repo
+modules/
+compositions/
+bin/oos-*.sh
+bin/dev-gate.sh
+bin/claude-*.sh
