@@ -229,9 +229,12 @@ export default function ReportViewer() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Report Header */}
         <div className="mb-8 pb-6 border-b border-gray-800">
-          <h1 className="text-3xl font-bold text-gray-100 mb-4">
-            {report.metadata?.query || 'Research Report'}
-          </h1>
+          <div className="mb-6">
+            <div className="text-sm text-gray-500 uppercase tracking-wide mb-2">Research Question</div>
+            <h1 className="text-3xl font-bold text-white leading-relaxed mb-4 pb-4 border-b border-gray-700 max-w-4xl">
+              {report.metadata?.query || 'Research Report'}
+            </h1>
+          </div>
 
           {report.metadata && (
             <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4 border border-gray-700">
