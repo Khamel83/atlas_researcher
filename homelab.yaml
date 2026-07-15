@@ -1,0 +1,32 @@
+schema: homelab.project/v1
+project:
+  id: atlas-researcher
+  name: Atlas Researcher
+  repository: https://github.com/Khamel83/atlas_researcher
+  kind: service
+  lifecycle: development
+  owner: homelab
+monitoring:
+  state: standby
+runtime:
+  production:
+    host: unknown
+    managed_by: unknown
+    unit: atlas-researcher
+health:
+  source: homelab-api
+  checks: []
+observability:
+  event_sink: homelab-api:/observations
+  evidence_policy: sanitized
+dependencies:
+  required: []
+  optional: []
+secrets:
+  broker_consumer: atlas-researcher
+  references: []
+operations:
+  repair_ids: []
+docs:
+  index: README.md
+  operations: docs/OPERATIONS.md
